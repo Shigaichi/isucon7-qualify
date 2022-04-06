@@ -51,7 +51,7 @@
 - アプリケーションの動作切り替えなどは [ISUCON7予選 当日マニュアル](https://gist.github.com/941/8c64842b71995a2d448315e2594f62c2) を確認してください
 - ベンチマークを実施する際は以下のように localhost に対して行います
 ```
-$ cd /home/isucon/bench
+$ cd /home/isucon/isubata/bench
 $ # ベンチマークの実行
 $ ./bin/bench -remotes=127.0.0.1 -output result.json
 $ # 結果の確認

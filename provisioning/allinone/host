@@ -1,0 +1,6 @@
+[web]
+webA ansible_host=a.a.a.a
+[bench]
+benchD ansible_host=b.b.b.b
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
