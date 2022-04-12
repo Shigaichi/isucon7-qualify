@@ -28,6 +28,10 @@
     group: root
     mode: 0440
 
+- name: Set timezone to Asia/Tokyo
+  timezone:
+    name: Asia/Tokyo
+
 - name: Setup xbuild
   git:
     repo: https://github.com/tagomoris/xbuild.git
@@ -99,4 +103,3 @@
     sha256sum: 5669df08e406abf594de0e7a7718ef389e5dc7cc76905e7f6f64711e6aad7fa3
     mode: 0755
   become: yes
-
