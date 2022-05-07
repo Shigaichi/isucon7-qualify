@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"math"
+	"bytes"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
@@ -23,7 +25,55 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/middleware"
+	"github.com/najeira/measure"
 )
+
+// 計測時間データ型
+type MyLog struct {
+	Key   string
+	Count int64
+	Sum   float64
+	Min   float64
+	Max   float64
+	Avg   float64
+	Rate  float64
+	P95   float64
+}
+
+func getStats(w http.ResponseWriter, r *http.Request) {
+	stats := measure.GetStats()
+	stats.SortDesc("sum")
+
+	var logs []MyLog
+	for _, s := range stats {
+		log := MyLog{
+			Key:   s.Key,
+			Count: s.Count,
+			Sum:   math.Round(s.Sum),
+			Min:   (math.Round(s.Min*100) / 100),
+			Max:   (math.Round(s.Max*100) / 100),
+			Avg:   (math.Round(s.Avg*100) / 100),
+			Rate:  (math.Round(s.Rate*100) / 100),
+			P95:   (math.Round(s.P95*100) / 100),
+		}
+		logs = append(logs, log)
+	}
+
+	body := bytes.NewBufferString("key,count,sum,avg\n")
+	for _, s := range logs {
+		body.WriteString(fmt.Sprintf("%s,%d,%.0f,%.2f\n",
+			s.Key, s.Count, s.Sum, s.Avg))
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=UTF-8")
+	t := time.Now().Format("20060102_150405")
+	disp := "attachment; filename=\"" + t + "_log.csv\""
+	w.Header().Set("Content-Disposition", disp)
+	_, err := io.Copy(w, body)
+	if err != nil {
+		panic(err)
+	}
+}
 
 const (
 	avatarMaxBytes = 1 * 1024 * 1024
@@ -326,6 +376,8 @@ func getLogout(c echo.Context) error {
 }
 
 func postMessage(c echo.Context) error {
+	defer measure.Start("postMessage:all").Stop()
+	
 	user, err := ensureLogin(c)
 	if user == nil {
 		return err
@@ -367,6 +419,8 @@ func jsonifyMessage(m Message) (map[string]interface{}, error) {
 }
 
 func getMessage(c echo.Context) error {
+	defer measure.Start("getMessage:all").Stop()
+
 	userID := sessUserID(c)
 	if userID == 0 {
 		return c.NoContent(http.StatusForbidden)
@@ -683,6 +737,8 @@ func postProfile(c echo.Context) error {
 }
 
 func getIcon(c echo.Context) error {
+	defer measure.Start("getIcon:all").Stop()
+
 	var name string
 	var data []byte
 	err := db.QueryRow("SELECT name, data FROM image WHERE name = ?",
@@ -755,6 +811,8 @@ func main() {
 	e.GET("add_channel", getAddChannel)
 	e.POST("add_channel", postAddChannel)
 	e.GET("/icons/:file_name", getIcon)
+
+	e.GET("/stats", getStats)
 
 	e.Start(":5000")
 }

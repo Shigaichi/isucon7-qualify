@@ -24,3 +24,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/jmoiron/sqlx"
+[[constraint]]
+  branch = "master"
+  name = "github.com/najeira/measure"
