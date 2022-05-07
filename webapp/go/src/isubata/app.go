@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"math"
 	"bytes"
 
 	"github.com/go-sql-driver/mysql"
@@ -40,7 +39,7 @@ type MyLog struct {
 	P95   float64
 }
 
-func getStats(w http.ResponseWriter, r *http.Request) {
+func getStats(c echo.Context) error {
 	stats := measure.GetStats()
 	stats.SortDesc("sum")
 
@@ -49,12 +48,12 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		log := MyLog{
 			Key:   s.Key,
 			Count: s.Count,
-			Sum:   math.Round(s.Sum),
-			Min:   (math.Round(s.Min*100) / 100),
-			Max:   (math.Round(s.Max*100) / 100),
-			Avg:   (math.Round(s.Avg*100) / 100),
-			Rate:  (math.Round(s.Rate*100) / 100),
-			P95:   (math.Round(s.P95*100) / 100),
+			Sum:   s.Sum,
+			Min:   s.Min,
+			Max:   s.Max,
+			Avg:   s.Avg,
+			Rate:  s.Rate,
+			P95:   s.P95,
 		}
 		logs = append(logs, log)
 	}
@@ -65,14 +64,15 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 			s.Key, s.Count, s.Sum, s.Avg))
 	}
 
-	w.Header().Set("Content-Type", "text/csv; charset=UTF-8")
+	c.Response().Header().Set("Content-Type", "text/csv; charset=UTF-8")
 	t := time.Now().Format("20060102_150405")
 	disp := "attachment; filename=\"" + t + "_log.csv\""
-	w.Header().Set("Content-Disposition", disp)
-	_, err := io.Copy(w, body)
+	c.Response().Header().Set("Content-Disposition", disp)
+	_, err := io.Copy(c.Response().Writer, body)
 	if err != nil {
 		panic(err)
 	}
+	return err
 }
 
 const (
