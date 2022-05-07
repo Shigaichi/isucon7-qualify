@@ -421,6 +421,7 @@ func jsonifyMessage(m Message) (map[string]interface{}, error) {
 func getMessage(c echo.Context) error {
 	defer measure.Start("getMessage:all").Stop()
 
+	m := measure.Start("getMessage:part1")
 	userID := sessUserID(c)
 	if userID == 0 {
 		return c.NoContent(http.StatusForbidden)
@@ -439,7 +440,9 @@ func getMessage(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	m.Stop()
 
+	m = measure.Start("getMessage:part2")
 	response := make([]map[string]interface{}, 0)
 	for i := len(messages) - 1; i >= 0; i-- {
 		m := messages[i]
@@ -459,6 +462,7 @@ func getMessage(c echo.Context) error {
 			return err
 		}
 	}
+	m.Stop()
 
 	return c.JSON(http.StatusOK, response)
 }
@@ -739,6 +743,7 @@ func postProfile(c echo.Context) error {
 func getIcon(c echo.Context) error {
 	defer measure.Start("getIcon:all").Stop()
 
+	m := measure.Start("getIcon:part1")
 	var name string
 	var data []byte
 	err := db.QueryRow("SELECT name, data FROM image WHERE name = ?",
@@ -749,7 +754,9 @@ func getIcon(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	m.Stop()
 
+	m = measure.Start("getIcon:part2")
 	mime := ""
 	switch true {
 	case strings.HasSuffix(name, ".jpg"), strings.HasSuffix(name, ".jpeg"):
@@ -761,6 +768,7 @@ func getIcon(c echo.Context) error {
 	default:
 		return echo.ErrNotFound
 	}
+	m.Stop()
 	return c.Blob(http.StatusOK, mime, data)
 }
 
