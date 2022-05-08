@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"crypto/sha1"
 	"database/sql"
@@ -16,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"bytes"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
@@ -165,16 +165,36 @@ func addMessage(channelID, userID int64, content string) (int64, error) {
 }
 
 type Message struct {
-	ID        int64     `db:"id"`
-	ChannelID int64     `db:"channel_id"`
-	UserID    int64     `db:"user_id"`
-	Content   string    `db:"content"`
-	CreatedAt time.Time `db:"created_at"`
+	ID              int64     `db:"id"`
+	ChannelID       int64     `db:"channel_id"`
+	UserID          int64     `db:"user_id"`
+	Content         string    `db:"content"`
+	UserName        string    `db:"user_name"`
+	UserDisplayName string    `db:"user_display_name"`
+	UserAvatarIcon  string    `db:"user_avatar_icon"`
+	CreatedAt       time.Time `db:"created_at"`
 }
 
 func queryMessages(chanID, lastID int64) ([]Message, error) {
 	msgs := []Message{}
-	err := db.Select(&msgs, "SELECT * FROM message WHERE id > ? AND channel_id = ? ORDER BY id DESC LIMIT 100",
+	//FIXME: format
+	query := `
+		SELECT message.id as         id,
+			message.channel_id as channel_id,
+			message.user_id as    user_id,
+			message.Content as    content,
+			user.name as          user_name,
+			user.display_name as  user_display_name,
+			user.avatar_icon as   user_avatar_icon,
+			message.created_at as created_at
+		FROM message
+			join user on message.user_id = user.id
+		WHERE message.id > ?
+		AND channel_id = ?
+		ORDER BY id DESC
+		LIMIT 100
+`
+	err := db.Select(&msgs, query,
 		lastID, chanID)
 	return msgs, err
 }
@@ -377,7 +397,7 @@ func getLogout(c echo.Context) error {
 
 func postMessage(c echo.Context) error {
 	defer measure.Start("postMessage:all").Stop()
-	
+
 	user, err := ensureLogin(c)
 	if user == nil {
 		return err
@@ -436,6 +456,7 @@ func getMessage(c echo.Context) error {
 		return err
 	}
 
+	// あるチャンネルのlastID以降のメッセージ（複数かも）を取得
 	messages, err := queryMessages(chanID, lastID)
 	if err != nil {
 		return err
@@ -446,7 +467,17 @@ func getMessage(c echo.Context) error {
 	response := make([]map[string]interface{}, 0)
 	for i := len(messages) - 1; i >= 0; i-- {
 		m := messages[i]
-		r, err := jsonifyMessage(m)
+		u := User{}
+		u.AvatarIcon = m.UserAvatarIcon
+		u.DisplayName = m.UserDisplayName
+		u.Name = m.UserName
+
+		r := make(map[string]interface{})
+		r["id"] = m.ID
+		r["user"] = u
+		r["date"] = m.CreatedAt.Format("2006/01/02 15:04:05")
+		r["content"] = m.Content
+
 		if err != nil {
 			return err
 		}
