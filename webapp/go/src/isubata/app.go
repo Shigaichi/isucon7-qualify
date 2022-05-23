@@ -41,6 +41,7 @@ type MyLog struct {
 
 func getStats(c echo.Context) error {
 	stats := measure.GetStats()
+	measure.Reset()
 	stats.SortDesc("sum")
 
 	var logs []MyLog
@@ -751,7 +752,16 @@ func postProfile(c echo.Context) error {
 	}
 
 	if avatarName != "" && len(avatarData) > 0 {
-		_, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+		// _, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+
+		path := `/home/isucon/isubata/webapp/public/icons/` + avatarName
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			err := ioutil.WriteFile(path, avatarData, 0644)
+			if err != nil {
+				return err
+			}
+		}
+
 		if err != nil {
 			return err
 		}
@@ -777,8 +787,17 @@ func getIcon(c echo.Context) error {
 	m := measure.Start("getIcon:part1")
 	var name string
 	var data []byte
+
+	fileName := c.Param("file_name")
+
+	//FIXME: 本当にファイルから取得しているか、SELECTしていないか？
+	path := `/home/isucon/isubata/webapp/public/icons/` + fileName
+	if _, err := os.Stat(path); os.IsExist(err) {
+		return c.File(path)
+	}
+
 	err := db.QueryRow("SELECT name, data FROM image WHERE name = ?",
-		c.Param("file_name")).Scan(&name, &data)
+		fileName).Scan(&name, &data)
 	if err == sql.ErrNoRows {
 		return echo.ErrNotFound
 	}
