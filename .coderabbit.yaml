@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "ja"
+early_access: false
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  poem: false
+  path_instructions:
+    - path: "**/*"
+      instructions: "|
+        このプロジェクトはISUCONという日本のプログラミングコンテスト用のプロジェクトです。
+        制限時間内でAPIを実装し、そのパフォーマンスを競います。
+        その性質上長期間メンテナンスすることはないため、多少可読性が低くても問題ありません。
+        逆にアプリケーションのパフォーマンスを重視したレビューをしてください。
+        また、プロジェクト中にnginxやmysqlの設定ファイルなどが含まれることもありますが、実際はサーバーにデプロイして利用します。
+        "
