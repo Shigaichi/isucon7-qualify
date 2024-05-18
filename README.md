@@ -144,6 +144,8 @@ export ISUBATA_DB_PASSWORD=isucon
 $ cd bench
 $ ./bin/bench -h # ヘルプ確認
 $ ./bin/bench -remotes=127.0.0.1 -output result.json
+$ # or
+$ ./bin/bench -remotes=127.0.0.1 -output ~/(date "+%Y%m%d-%H%M%S").json
 ```
 
 結果を見るには `sudo apt install jq` で jq をインストールしてから、

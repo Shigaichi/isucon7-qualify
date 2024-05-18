@@ -56,6 +56,8 @@ $ # ベンチマークの実行
 $ ./bin/bench -remotes=127.0.0.1 -output result.json
 $ # 結果の確認
 $ jq . < result.json
+$ # or
+$ ./bin/bench -remotes=127.0.0.1 -output ~/(date "+%Y%m%d-%H%M%S").json
 ```
 
 
@@ -85,12 +87,11 @@ Vagrant を使わずにサーバなどへデプロイする場合は Ansible か
 
 ```console
 $ git clone https://github.com/isucon/isucon7-qualify
-$ cd isucon7/qualify/provisioning/allinone/
+$ cd provisioning/allinone/
 $ # プロビジョニングに時間がかかるので必要な言語実装だけにしたほうが良いです。
 $ vi site.yml
 $ ansible-playbook -i target-host, site.yml
 ```
-
 
 ## 各ロール役割
 
