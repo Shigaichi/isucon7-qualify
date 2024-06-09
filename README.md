@@ -144,6 +144,8 @@ export ISUBATA_DB_PASSWORD=isucon
 $ cd bench
 $ ./bin/bench -h # ヘルプ確認
 $ ./bin/bench -remotes=127.0.0.1 -output result.json
+$ # or
+$ ./bin/bench -remotes=127.0.0.1 -output ~/(date "+%Y%m%d-%H%M%S").json
 ```
 
 結果を見るには `sudo apt install jq` で jq をインストールしてから、
@@ -163,3 +165,58 @@ systemd に置く設定ファイルなどは files/ ディレクトリから探�
 - なんちゃって個人情報 http://kazina.com/dummy/
 - いらすとや http://www.irasutoya.com/
 - pixabay https://pixabay.com/
+
+### 実行方法修正後メモ
+
+AWS EC2で練習するに当たり、実行方法を変更した。
+
+実際の予選時は
+
+> 1コア、1GBメモリ、20GBディスク
+
+だったらしいが、これに近いスペックのインスタンスはなく、また、あまりに小さいインスタンスでは起動できなかった。`c5.large`なら起動できた。
+
+#### アプリケーション起動方法
+
+再現用AMIにはgoが入っていないためインストールする。[ドキュメント](https://go.dev/doc/install)に従い、次のコマンドをrootで実行
+
+```bash
+wget https://go.dev/dl/go1.22.4.linux-amd64.tar.gz
+rm -rf /usr/local/go && tar -C /usr/local -xzf go1.22.4.linux-amd64.tar.gz
+```
+
+次の行を.profileに追加する
+
+```bash
+PATH=$PATH:/usr/local/go/bin
+```
+
+これでgoが実行できるので、アプリケーションをビルドする
+
+```bash
+cd ~/isubata/webapp/go/src/isubata
+make
+```
+
+statusで編集するべきファイルがわかるので、それを編集する
+
+```bash
+sudo systemctl status isubata.golang.service
+```
+
+その後起動アプリケーションをGoに変える
+
+```bash
+sudo systemctl stop    isubata.python.service
+sudo systemctl disable isubata.python.service
+sudo systemctl start  isubata.golang.service
+sudo systemctl enable isubata.golang.service
+```
+
+#### ベンチマーク実行方法
+
+```bash
+sudo -i -u isucon
+cd isubata/bench
+bin/bench -remotes=127.0.0.1 -output $(date '+%Y%m%d_%H%M%S').json
+```

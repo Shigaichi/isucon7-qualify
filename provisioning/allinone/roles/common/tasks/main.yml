@@ -32,13 +32,13 @@
   timezone:
     name: Asia/Tokyo
 
-- name: Setup xbuild
-  git:
-    repo: https://github.com/tagomoris/xbuild.git
-    dest: /home/isucon/xbuild
-    version: master
-  become: yes
-  become_user: isucon
+# - name: Setup xbuild
+#   git:
+#     repo: https://github.com/tagomoris/xbuild.git
+#     dest: /home/isucon/xbuild
+#     version: master
+#   become: yes
+#   become_user: isucon
 
 - name: Install Dependencies
   apt:
@@ -80,9 +80,9 @@
 
 - name: Clone isubata
   git:
-    repo: https://github.com/Shigaichi/isucon7-qualify.git
+    repo: https://github.com/shigaichi/isucon7-qualify.git
     dest: /home/isucon/isubata
-    version: master
+    version: develop2
     update: yes
   become: yes
   become_user: isucon
@@ -96,10 +96,10 @@
     group: isucon
     mode: 0755
 
-- name: Download goss (server testing/validation tool)
-  get_url:
-    url: https://github.com/aelsabbahy/goss/releases/download/v0.3.5/goss-linux-amd64
-    dest: /usr/local/bin/goss
-    sha256sum: 5669df08e406abf594de0e7a7718ef389e5dc7cc76905e7f6f64711e6aad7fa3
-    mode: 0755
-  become: yes
+# - name: Download goss (server testing/validation tool)
+#   get_url:
+#     url: https://github.com/aelsabbahy/goss/releases/download/v0.3.5/goss-linux-amd64
+#     dest: /usr/local/bin/goss
+#     sha256sum: 5669df08e406abf594de0e7a7718ef389e5dc7cc76905e7f6f64711e6aad7fa3
+#     mode: 0755
+#   become: yes

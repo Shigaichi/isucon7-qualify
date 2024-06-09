@@ -1,6 +1,8 @@
 [web]
-webA ansible_host=a.a.a.a
+webA ansible_host=54.199.212.206
+webB ansible_host=54.64.97.63
+webC ansible_host=54.92.117.192
 [bench]
-benchD ansible_host=b.b.b.b
+benchD ansible_host=18.179.30.198
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
