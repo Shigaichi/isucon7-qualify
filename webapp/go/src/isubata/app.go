@@ -175,10 +175,75 @@ type Message struct {
 }
 
 func queryMessages(chanID, lastID int64) ([]Message, error) {
+	//TODO delete
 	msgs := []Message{}
 	err := db.Select(&msgs, "SELECT * FROM message WHERE id > ? AND channel_id = ? ORDER BY id DESC LIMIT 100",
 		lastID, chanID)
 	return msgs, err
+}
+
+func queryMessages2(chanID, lastID int64) ([]map[string]interface{}, error) {
+	query := `
+	SELECT m.id,
+-- 	       channel_id,
+	       user_id,
+	       content,
+	       m.created_at,
+	       u.name,
+	       u.display_name,
+	       u.avatar_icon
+	FROM message m
+	JOIN user u ON m.user_id = u.id
+	WHERE m.id > ?
+	  AND channel_id = ?
+	ORDER BY id DESC
+	LIMIT 100
+	`
+
+	rows, err := db.Query(query, lastID, chanID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+
+	for rows.Next() {
+		var (
+			id int64
+			//channelID   int64
+			userID      int64
+			content     string
+			createdAt   time.Time
+			name        string
+			displayName string
+			avatarIcon  string
+		)
+
+		err := rows.Scan(&id, &userID, &content, &createdAt, &name, &displayName, &avatarIcon)
+		if err != nil {
+			return nil, err
+		}
+
+		result := map[string]interface{}{
+			"id":      id,
+			"content": content,
+			"date":    createdAt.Format("2006/01/02 15:04:05"),
+			"user": map[string]interface{}{
+				"name":         name,
+				"display_name": displayName,
+				"avatar_icon":  avatarIcon,
+			},
+		}
+
+		results = append(results, result)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return results, nil
 }
 
 func sessUserID(c echo.Context) int64 {
@@ -421,7 +486,7 @@ func jsonifyMessage(m Message) (map[string]interface{}, error) {
 }
 
 func getMessage(c echo.Context) error {
-	defer measure.Start("getMessage:all").Stop()
+	//defer measure.Start("getMessage:all").Stop()
 
 	userID := sessUserID(c)
 	if userID == 0 {
@@ -437,32 +502,33 @@ func getMessage(c echo.Context) error {
 		return err
 	}
 
-	messages, err := queryMessages(chanID, lastID)
+	// TODO messages ChannelIDは未使用か
+	messages, err := queryMessages2(chanID, lastID)
 	if err != nil {
 		return err
 	}
 
-	response := make([]map[string]interface{}, 0)
-	for i := len(messages) - 1; i >= 0; i-- {
-		m := messages[i]
-		r, err := jsonifyMessage(m)
-		if err != nil {
-			return err
-		}
-		response = append(response, r)
-	}
+	//response := make([]map[string]interface{}, 0)
+	//for i := len(messages) - 1; i >= 0; i-- {
+	//	m := messages[i]
+	//	r, err := jsonifyMessage(m)
+	//	if err != nil {
+	//		return err
+	//	}
+	//	response = append(response, r)
+	//}
 
 	if len(messages) > 0 {
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
 			" ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()",
-			userID, chanID, messages[0].ID, messages[0].ID)
+			userID, chanID, messages[0]["id"], messages[0]["id"])
 		if err != nil {
 			return err
 		}
 	}
 
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, messages)
 }
 
 func queryChannels() ([]int64, error) {
