@@ -196,7 +196,7 @@ func queryMessages2(chanID, lastID int64) ([]map[string]interface{}, error) {
 	JOIN user u ON m.user_id = u.id
 	WHERE m.id > ?
 	  AND channel_id = ?
-	ORDER BY m.id DESC
+	ORDER BY m.id
 	LIMIT 100
 	`
 
@@ -502,7 +502,6 @@ func getMessage(c echo.Context) error {
 		return err
 	}
 
-	// TODO messages ChannelIDは未使用か
 	messages, err := queryMessages2(chanID, lastID)
 	if err != nil {
 		return err
