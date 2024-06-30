@@ -18,13 +18,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo-contrib/pprof"
+	"github.com/najeira/measure"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/najeira/measure"
 )
 
 // 計測時間データ型
@@ -790,6 +792,8 @@ func main() {
 		Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
 	}))
 	e.Use(middleware.Static("../../public"))
+
+	pprof.Register(e)
 
 	e.GET("/initialize", getInitialize)
 	e.GET("/", getIndex)
