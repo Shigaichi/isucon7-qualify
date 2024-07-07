@@ -197,7 +197,7 @@ func queryMessages2(chanID, lastID int64) ([]map[string]interface{}, error) {
 	JOIN user u ON m.user_id = u.id
 	WHERE m.id > ?
 	  AND channel_id = ?
-	ORDER BY m.id DESC
+	ORDER BY m.id
 	LIMIT 100
 	`
 
@@ -522,7 +522,7 @@ func getMessage(c echo.Context) error {
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
 			" ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()",
-			userID, chanID, messages[0]["id"], messages[0]["id"])
+			userID, chanID, messages[len(messages)-1]["id"], messages[len(messages)-1]["id"])
 		if err != nil {
 			return err
 		}
