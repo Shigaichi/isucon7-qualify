@@ -197,7 +197,7 @@ func queryMessages2(chanID, lastID int64) ([]map[string]interface{}, error) {
 	JOIN user u ON m.user_id = u.id
 	WHERE m.id > ?
 	  AND channel_id = ?
-	ORDER BY m.id
+	ORDER BY m.id DESC
 	LIMIT 100
 	`
 
