@@ -574,7 +574,7 @@ func fetchUnread(c echo.Context) error {
 	}
 
 	// TODO: なぜスリープ？
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
 	//channels, err := queryChannels()
 	//if err != nil {
