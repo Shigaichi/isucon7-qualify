@@ -907,6 +907,8 @@ func main() {
 	}))
 	e.Use(middleware.Static("../../public"))
 
+	e.Logger.SetLevel(4)
+
 	pprof.Register(e)
 
 	e.GET("/initialize", getInitialize)
