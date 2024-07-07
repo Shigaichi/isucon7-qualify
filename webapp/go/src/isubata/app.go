@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -568,44 +569,59 @@ func fetchUnread(c echo.Context) error {
 	// TODO: なぜスリープ？
 	time.Sleep(time.Second)
 
-	//channels, err := queryChannels()
-	//if err != nil {
-	//	return err
-	//}
-
-	//resp := []map[string]interface{}{}
-
-	resp, err := getUnreadMessages(db, userID)
+	channels, err := queryChannels()
 	if err != nil {
 		return err
 	}
 
-	//for _, chID := range channels {
-	//	lastID, err := queryHaveRead(userID, chID)
-	//	if err != nil {
-	//		return err
-	//	}
-	//
-	//	var cnt int64
-	//	if lastID > 0 {
-	//		err = db.Get(&cnt,
-	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
-	//			chID, lastID)
-	//	} else {
-	//		err = db.Get(&cnt,
-	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
-	//			chID)
-	//	}
-	//	if err != nil {
-	//		return err
-	//	}
-	//	r := map[string]interface{}{
-	//		"channel_id": chID,
-	//		"unread":     cnt}
-	//	resp = append(resp, r)
-	//}
+	resp := []map[string]interface{}{}
+
+	resp2, err := getUnreadMessages(db, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, chID := range channels {
+		lastID, err := queryHaveRead(userID, chID)
+		if err != nil {
+			return err
+		}
+
+		var cnt int64
+		if lastID > 0 {
+			err = db.Get(&cnt,
+				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
+				chID, lastID)
+		} else {
+			err = db.Get(&cnt,
+				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
+				chID)
+		}
+		if err != nil {
+			return err
+		}
+		r := map[string]interface{}{
+			"channel_id": chID,
+			"unread":     cnt}
+		resp = append(resp, r)
+	}
+
+	logDifferences(resp, resp2)
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+func logDifferences(map1, map2 []map[string]interface{}) {
+	if len(map1) != len(map2) {
+		log.Println("Error: The maps have different lengths")
+		return
+	}
+
+	for i := range map1 {
+		if !reflect.DeepEqual(map1[i], map2[i]) {
+			log.Printf("Difference found at index %d:\nMap1: %v\nMap2: %v\n", i, map1[i], map2[i])
+		}
+	}
 }
 
 type ChannelUnread struct {
