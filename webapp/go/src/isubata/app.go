@@ -517,12 +517,14 @@ func getMessage(c echo.Context) error {
 	//	}
 	//	response = append(response, r)
 	//}
+	l := messages[len(messages)-1]["id"]
+	log.Printf("lastId: %s", l)
 
 	if len(messages) > 0 {
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
 			" ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()",
-			userID, chanID, messages[len(messages)-1]["id"], messages[len(messages)-1]["id"])
+			userID, chanID, l, l)
 		if err != nil {
 			return err
 		}
