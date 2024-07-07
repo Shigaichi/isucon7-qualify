@@ -467,6 +467,8 @@ func postMessage(c echo.Context) error {
 		return err
 	}
 
+	log.Printf("postMessage chanID: %d, userID: %d, message: %s\n", chanID, user.ID, message)
+
 	return c.NoContent(204)
 }
 
@@ -530,7 +532,7 @@ func getMessage(c echo.Context) error {
 		if !ok {
 			log.Fatalf("Expected int64 but got %T\n", l)
 		}
-		log.Printf("firstId: %d,lastId: %d\n", l1, l2)
+		log.Printf("len: %d,firstId: %d,lastId: %d\n", len(messages), l1, l2)
 
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
@@ -613,6 +615,8 @@ func fetchUnread(c echo.Context) error {
 	//		"unread":     cnt}
 	//	resp = append(resp, r)
 	//}
+
+	log.Printf("fetchUnread userID: %d\n", userID)
 
 	resp2, err := getUnreadMessages(db, userID)
 	if err != nil {
