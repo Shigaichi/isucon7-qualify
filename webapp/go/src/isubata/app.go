@@ -567,46 +567,46 @@ func fetchUnread(c echo.Context) error {
 	}
 
 	// TODO: なぜスリープ？
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 2)
 
-	channels, err := queryChannels()
-	if err != nil {
-		return err
-	}
-
-	resp := []map[string]interface{}{}
-
-	for _, chID := range channels {
-		lastID, err := queryHaveRead(userID, chID)
-		if err != nil {
-			return err
-		}
-
-		var cnt int64
-		if lastID > 0 {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
-				chID, lastID)
-		} else {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
-				chID)
-		}
-		if err != nil {
-			return err
-		}
-		r := map[string]interface{}{
-			"channel_id": chID,
-			"unread":     cnt}
-		resp = append(resp, r)
-	}
+	//channels, err := queryChannels()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//resp := []map[string]interface{}{}
+	//
+	//for _, chID := range channels {
+	//	lastID, err := queryHaveRead(userID, chID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	var cnt int64
+	//	if lastID > 0 {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
+	//			chID, lastID)
+	//	} else {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
+	//			chID)
+	//	}
+	//	if err != nil {
+	//		return err
+	//	}
+	//	r := map[string]interface{}{
+	//		"channel_id": chID,
+	//		"unread":     cnt}
+	//	resp = append(resp, r)
+	//}
 
 	resp2, err := getUnreadMessages(db, userID)
 	if err != nil {
 		return err
 	}
 
-	logDifferences(resp, resp2)
+	//logDifferences(resp, resp2)
 
 	return c.JSON(http.StatusOK, resp2)
 }
