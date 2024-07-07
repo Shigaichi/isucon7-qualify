@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -443,7 +444,7 @@ func getLogout(c echo.Context) error {
 }
 
 func postMessage(c echo.Context) error {
-	defer measure.Start("postMessage:all").Stop()
+	//defer measure.Start("postMessage:all").Stop()
 
 	user, err := ensureLogin(c)
 	if user == nil {
@@ -465,6 +466,8 @@ func postMessage(c echo.Context) error {
 	if _, err := addMessage(chanID, user.ID, message); err != nil {
 		return err
 	}
+
+	log.Printf("postMessage chanID: %d, userID: %d, message: %s\n", chanID, user.ID, message)
 
 	return c.NoContent(204)
 }
@@ -518,10 +521,23 @@ func getMessage(c echo.Context) error {
 	//}
 
 	if len(messages) > 0 {
+		l := messages[len(messages)-1]["id"]
+		l2, ok := l.(int64)
+		if !ok {
+			log.Fatalf("Expected int64 but got %T\n", l)
+		}
+
+		l = messages[0]["id"]
+		l1, ok := l.(int64)
+		if !ok {
+			log.Fatalf("Expected int64 but got %T\n", l)
+		}
+		log.Printf("len: %d,firstId: %d,lastId: %d\n", len(messages), l1, l2)
+
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
 			" ON DUPLICATE KEY UPDATE message_id = ?, updated_at = NOW()",
-			userID, chanID, messages[0]["id"], messages[0]["id"])
+			userID, chanID, l2, l2)
 		if err != nil {
 			return err
 		}
@@ -530,23 +546,25 @@ func getMessage(c echo.Context) error {
 	return c.JSON(http.StatusOK, messages)
 }
 
+// queryChannels は全てのチャンネルを取得する
 func queryChannels() ([]int64, error) {
 	res := []int64{}
 	err := db.Select(&res, "SELECT id FROM channel")
 	return res, err
 }
 
+// queryHaveRead はあるユーザーIdがあるチャンネルで最後に読んだメッセージを返す
 func queryHaveRead(userID, chID int64) (int64, error) {
 	type HaveRead struct {
-		UserID    int64     `db:"user_id"`
-		ChannelID int64     `db:"channel_id"`
-		MessageID int64     `db:"message_id"`
-		UpdatedAt time.Time `db:"updated_at"`
-		CreatedAt time.Time `db:"created_at"`
+		//UserID    int64     `db:"user_id"`
+		//ChannelID int64     `db:"channel_id"`
+		MessageID int64 `db:"message_id"`
+		//UpdatedAt time.Time `db:"updated_at"`
+		//CreatedAt time.Time `db:"created_at"`
 	}
 	h := HaveRead{}
 
-	err := db.Get(&h, "SELECT * FROM haveread WHERE user_id = ? AND channel_id = ?",
+	err := db.Get(&h, "SELECT message_id FROM haveread WHERE user_id = ? AND channel_id = ?",
 		userID, chID)
 
 	if err == sql.ErrNoRows {
@@ -563,41 +581,110 @@ func fetchUnread(c echo.Context) error {
 		return c.NoContent(http.StatusForbidden)
 	}
 
-	time.Sleep(time.Second)
+	// TODO: なぜスリープ？
+	time.Sleep(time.Second * 2)
 
-	channels, err := queryChannels()
+	//channels, err := queryChannels()
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//resp := []map[string]interface{}{}
+	//
+	//for _, chID := range channels {
+	//	lastID, err := queryHaveRead(userID, chID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	var cnt int64
+	//	if lastID > 0 {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
+	//			chID, lastID)
+	//	} else {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
+	//			chID)
+	//	}
+	//	if err != nil {
+	//		return err
+	//	}
+	//	r := map[string]interface{}{
+	//		"channel_id": chID,
+	//		"unread":     cnt}
+	//	resp = append(resp, r)
+	//}
+
+	log.Printf("fetchUnread userID: %d\n", userID)
+
+	resp2, err := getUnreadMessages(db, userID)
 	if err != nil {
 		return err
 	}
 
-	resp := []map[string]interface{}{}
+	//logDifferences(resp, resp2)
 
-	for _, chID := range channels {
-		lastID, err := queryHaveRead(userID, chID)
-		if err != nil {
-			return err
-		}
+	return c.JSON(http.StatusOK, resp2)
+}
 
-		var cnt int64
-		if lastID > 0 {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
-				chID, lastID)
-		} else {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
-				chID)
-		}
-		if err != nil {
-			return err
-		}
-		r := map[string]interface{}{
-			"channel_id": chID,
-			"unread":     cnt}
-		resp = append(resp, r)
+func logDifferences(map1, map2 []map[string]interface{}) {
+	if len(map1) != len(map2) {
+		log.Println("Error: The maps have different lengths")
+		return
 	}
 
-	return c.JSON(http.StatusOK, resp)
+	if !reflect.DeepEqual(map1, map2) {
+		log.Printf("Difference found:\nMap1: %v\nMap2: %v\n", map1, map2)
+	}
+
+	//for i := range map1 {
+	//	if !reflect.DeepEqual(map1[i], map2[i]) {
+	//		log.Printf("Difference found at index %d:\nMap1: %v\nMap2: %v\n", i, map1, map2)
+	//	}
+	//}
+}
+
+type ChannelUnread struct {
+	ChannelID int64 `db:"channel_id"`
+	Unread    int64 `db:"unread"`
+}
+
+func getUnreadMessages(db *sqlx.DB, userID int64) ([]map[string]interface{}, error) {
+	query := `
+		SELECT c.id AS channel_id,
+		       IF(h.message_id IS NOT NULL,
+		          (SELECT COUNT(*) FROM message WHERE channel_id = c.id AND h.message_id < id),
+		          (SELECT COUNT(*) FROM message WHERE channel_id = c.id)
+		           ) AS unread
+		FROM channel c
+		LEFT JOIN haveread h ON h.channel_id = c.id AND h.user_id = ?
+		ORDER BY c.id
+	`
+
+	rows, err := db.Queryx(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var cu ChannelUnread
+		if err := rows.StructScan(&cu); err != nil {
+			return nil, fmt.Errorf("row scan failed: %w", err)
+		}
+		results = append(results, map[string]interface{}{
+			"channel_id": cu.ChannelID,
+			"unread":     cu.Unread,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration failed: %w", err)
+	}
+
+	return results, nil
 }
 
 func getHistory(c echo.Context) error {
@@ -877,12 +964,16 @@ func main() {
 		templates: template.Must(template.New("").Funcs(funcs).ParseGlob("views/*.html")),
 	}
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secretonymoris"))))
-	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
-	}))
+	//e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+	//	Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
+	//}))
 	e.Use(middleware.Static("../../public"))
 
+	//e.Logger.SetLevel(4)
+
 	pprof.Register(e)
+
+	e.Use(middleware.Recover())
 
 	e.GET("/initialize", getInitialize)
 	e.GET("/", getIndex)
