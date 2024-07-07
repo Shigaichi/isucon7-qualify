@@ -576,11 +576,6 @@ func fetchUnread(c echo.Context) error {
 
 	resp := []map[string]interface{}{}
 
-	resp2, err := getUnreadMessages(db, userID)
-	if err != nil {
-		return err
-	}
-
 	for _, chID := range channels {
 		lastID, err := queryHaveRead(userID, chID)
 		if err != nil {
@@ -604,6 +599,11 @@ func fetchUnread(c echo.Context) error {
 			"channel_id": chID,
 			"unread":     cnt}
 		resp = append(resp, r)
+	}
+
+	resp2, err := getUnreadMessages(db, userID)
+	if err != nil {
+		return err
 	}
 
 	logDifferences(resp, resp2)
