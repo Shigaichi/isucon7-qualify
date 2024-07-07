@@ -443,7 +443,7 @@ func getLogout(c echo.Context) error {
 }
 
 func postMessage(c echo.Context) error {
-	defer measure.Start("postMessage:all").Stop()
+	//defer measure.Start("postMessage:all").Stop()
 
 	user, err := ensureLogin(c)
 	if user == nil {
@@ -530,23 +530,25 @@ func getMessage(c echo.Context) error {
 	return c.JSON(http.StatusOK, messages)
 }
 
+// queryChannels は全てのチャンネルを取得する
 func queryChannels() ([]int64, error) {
 	res := []int64{}
 	err := db.Select(&res, "SELECT id FROM channel")
 	return res, err
 }
 
+// queryHaveRead はあるユーザーIdがあるチャンネルで最後に読んだメッセージを返す
 func queryHaveRead(userID, chID int64) (int64, error) {
 	type HaveRead struct {
-		UserID    int64     `db:"user_id"`
-		ChannelID int64     `db:"channel_id"`
-		MessageID int64     `db:"message_id"`
-		UpdatedAt time.Time `db:"updated_at"`
-		CreatedAt time.Time `db:"created_at"`
+		//UserID    int64     `db:"user_id"`
+		//ChannelID int64     `db:"channel_id"`
+		MessageID int64 `db:"message_id"`
+		//UpdatedAt time.Time `db:"updated_at"`
+		//CreatedAt time.Time `db:"created_at"`
 	}
 	h := HaveRead{}
 
-	err := db.Get(&h, "SELECT * FROM haveread WHERE user_id = ? AND channel_id = ?",
+	err := db.Get(&h, "SELECT message_id FROM haveread WHERE user_id = ? AND channel_id = ?",
 		userID, chID)
 
 	if err == sql.ErrNoRows {
@@ -563,41 +565,88 @@ func fetchUnread(c echo.Context) error {
 		return c.NoContent(http.StatusForbidden)
 	}
 
+	// TODO: なぜスリープ？
 	time.Sleep(time.Second)
 
-	channels, err := queryChannels()
+	//channels, err := queryChannels()
+	//if err != nil {
+	//	return err
+	//}
+
+	//resp := []map[string]interface{}{}
+
+	resp, err := getUnreadMessages(db, userID)
 	if err != nil {
 		return err
 	}
 
-	resp := []map[string]interface{}{}
-
-	for _, chID := range channels {
-		lastID, err := queryHaveRead(userID, chID)
-		if err != nil {
-			return err
-		}
-
-		var cnt int64
-		if lastID > 0 {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
-				chID, lastID)
-		} else {
-			err = db.Get(&cnt,
-				"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
-				chID)
-		}
-		if err != nil {
-			return err
-		}
-		r := map[string]interface{}{
-			"channel_id": chID,
-			"unread":     cnt}
-		resp = append(resp, r)
-	}
+	//for _, chID := range channels {
+	//	lastID, err := queryHaveRead(userID, chID)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//	var cnt int64
+	//	if lastID > 0 {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ? AND ? < id",
+	//			chID, lastID)
+	//	} else {
+	//		err = db.Get(&cnt,
+	//			"SELECT COUNT(*) AS cnt FROM message WHERE channel_id = ?",
+	//			chID)
+	//	}
+	//	if err != nil {
+	//		return err
+	//	}
+	//	r := map[string]interface{}{
+	//		"channel_id": chID,
+	//		"unread":     cnt}
+	//	resp = append(resp, r)
+	//}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+type ChannelUnread struct {
+	ChannelID int64 `db:"channel_id"`
+	Unread    int64 `db:"unread"`
+}
+
+func getUnreadMessages(db *sqlx.DB, userID int64) ([]map[string]interface{}, error) {
+	query := `
+		SELECT c.id AS channel_id,
+		       IF(h.message_id IS NOT NULL,
+		          (SELECT COUNT(*) FROM message WHERE channel_id = c.id AND h.message_id < id),
+		          (SELECT COUNT(*) FROM message WHERE channel_id = c.id)
+		           ) AS unread
+		FROM channel c
+		LEFT JOIN haveread h ON h.channel_id = c.id AND h.user_id = ?
+	`
+
+	rows, err := db.Queryx(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("query execution failed: %w", err)
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var cu ChannelUnread
+		if err := rows.StructScan(&cu); err != nil {
+			return nil, fmt.Errorf("row scan failed: %w", err)
+		}
+		results = append(results, map[string]interface{}{
+			"channel_id": cu.ChannelID,
+			"unread":     cu.Unread,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration failed: %w", err)
+	}
+
+	return results, nil
 }
 
 func getHistory(c echo.Context) error {
