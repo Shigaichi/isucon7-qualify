@@ -524,7 +524,13 @@ func getMessage(c echo.Context) error {
 		if !ok {
 			log.Fatalf("Expected int64 but got %T\n", l)
 		}
-		log.Printf("lastId: %d\n", l2)
+
+		l = messages[0]["id"]
+		l1, ok := l.(int64)
+		if !ok {
+			log.Fatalf("Expected int64 but got %T\n", l)
+		}
+		log.Printf("firstId: %d,lastId: %d\n", l1, l2)
 
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
 			" VALUES (?, ?, ?, NOW(), NOW())"+
