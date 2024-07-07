@@ -567,7 +567,7 @@ func fetchUnread(c echo.Context) error {
 	}
 
 	// TODO: なぜスリープ？
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second)
 
 	//channels, err := queryChannels()
 	//if err != nil {
@@ -642,6 +642,7 @@ func getUnreadMessages(db *sqlx.DB, userID int64) ([]map[string]interface{}, err
 		           ) AS unread
 		FROM channel c
 		LEFT JOIN haveread h ON h.channel_id = c.id AND h.user_id = ?
+		ORDER BY c.id
 	`
 
 	rows, err := db.Queryx(query, userID)
