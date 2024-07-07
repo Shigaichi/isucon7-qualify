@@ -518,7 +518,11 @@ func getMessage(c echo.Context) error {
 	//	response = append(response, r)
 	//}
 	l := messages[len(messages)-1]["id"]
-	log.Printf("lastId: %s", l)
+	l2, ok := l.(int64)
+	if !ok {
+		log.Fatalf("Expected int64 but got %T\n", l)
+	}
+	log.Printf("lastId: %d\n", l2)
 
 	if len(messages) > 0 {
 		_, err := db.Exec("INSERT INTO haveread (user_id, channel_id, message_id, updated_at, created_at)"+
@@ -933,6 +937,8 @@ func main() {
 	//e.Logger.SetLevel(4)
 
 	pprof.Register(e)
+
+	e.Use(middleware.Recover())
 
 	e.GET("/initialize", getInitialize)
 	e.GET("/", getIndex)
