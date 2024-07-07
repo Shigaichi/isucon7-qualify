@@ -783,7 +783,8 @@ func postProfile(c echo.Context) error {
 	}
 
 	if avatarName != "" && len(avatarData) > 0 {
-		_, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+		//_, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+		err = saveImageToFile(avatarName, avatarData)
 		if err != nil {
 			return err
 		}
@@ -803,8 +804,31 @@ func postProfile(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/")
 }
 
+func saveImageToFile(avatarName string, avatarData []byte) error {
+	// 保存先ディレクトリを設定
+	dir := "/home/isucon/isucon7-qualify/webapp/public/icons/"
+	// ディレクトリが存在しない場合は作成
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			return fmt.Errorf("ディレクトリの作成に失敗しました: %v", err)
+		}
+	}
+
+	// ファイルパスを設定
+	filePath := dir + avatarName
+
+	// 画像データをファイルに保存
+	err := ioutil.WriteFile(filePath, avatarData, 0644)
+	if err != nil {
+		return fmt.Errorf("画像ファイルの保存に失敗しました: %v", err)
+	}
+
+	return nil
+}
+
 func getIcon(c echo.Context) error {
-	defer measure.Start("getIcon:all").Stop()
+	//defer measure.Start("getIcon:all").Stop()
 
 	var name string
 	var data []byte
